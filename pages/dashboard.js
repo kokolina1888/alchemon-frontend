@@ -14,90 +14,79 @@ import { alchemyApiKey, contractAddress } from "@/data/constants";
 import { useAccount } from "wagmi";
 
 export default function Dashboard() {
+  // Standard Next router definition
+  const router = useRouter();
 
-    // Standard Next router definition
-    const router = useRouter();
+  // Get connected wallet address and connection status
+  const { address, isConnected } = useAccount();
 
-    // Get connected wallet address and connection status
-    const { address, isConnected } = useAccount();
+  // Page mounting info to prevent hydration errors
+  const [hasMounted, setHasMounted] = useState(false);
 
-    // Page mounting info to prevent hydration errors
-    const [hasMounted, setHasMounted] = useState(false);
+  // Variable that holds all Alchemons created by connected wallet
+  const [nfts, setNfts] = useState([]);
 
-    // Variable that holds all Alchemons created by connected wallet
-    const [nfts, setNfts] = useState([]);
+  // Initialize Alchemy SDK
+  const settings = {
+    apiKey: alchemyApiKey,
+    network: Network.ETH_GOERLI,
+  };
 
-    // Mint redirect
-    const [redirect, setRedirect] = useState(false);
+  const alchemy = new Alchemy(settings);
 
-    // Initialize Alchemy SDK
-    const settings = {
-        apiKey: alchemyApiKey,
-        network: Network.ETH_GOERLI,
+  // Mounting fix to avoid hydration errors
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  // Get all Alchemon NFTs owned by the connected wallet
+  useEffect(() => {
+    const getNfts = async () => {
+      const response = await alchemy.nft.getNftsForOwner(address);
+      const nfts = response.ownedNfts.filter(
+        (nft) =>
+          nft.contract.address.toUpperCase() === contractAddress.toUpperCase()
+      );
+      setNfts(nfts);
     };
 
-    const alchemy = new Alchemy(settings);
+    getNfts();
+  }, []);
 
-    // Mounting fix to avoid hydration errors
-    useEffect(() => {
-        setHasMounted(true);
-    }, []);
+  // Do not render until entire UI is mounted
+  if (!hasMounted) return null;
 
-    // Check if this is a mint redirect
-    useEffect(() => {
-        if (router.query.event === 'mint') setRedirect(true);
-    }, [router.query]);
+  // Redirect to Connect page if wallet is not connected
+  if (!isConnected) {
+    router.replace("/connect");
+  }
 
-    // Get all Alchemon NFTs owned by the connected wallet
-    useEffect(() => {
-        const getNfts = async () => {
-            const response = await alchemy.nft.getNftsForOwner(address);
-            const nfts = response.ownedNfts.filter(nft => nft.contract.address.toUpperCase() === contractAddress.toUpperCase());
-            setNfts(nfts);
-        }
+  return (
+    <Fragment>
+      <Head>
+        <title>Profile Dashboard</title>
+      </Head>
 
-        getNfts();
-    }, [])
+      <div className={styles.jumbotron}>
+        <h1>Dashboard</h1>
 
-    // Do not render until entire UI is mounted  
-    if (!hasMounted) return null;
+        <h2>Contract Address</h2>
+        <p>{address}</p>
 
-    // Redirect to Connect page if wallet is not connected
-    if (!isConnected) {
-        router.replace('/connect');
-    }
+        <h2 className={styles.nft_heading}>My NFTs</h2>
+        <div className={styles.nft_container}>
+          {nfts.map((nft) => {
+            return (
+              <div className={styles.nft} key={nft.tokenId}>
+                <h3>{nft.rawMetadata.name}</h3>
+                <img src={nft.media[0].raw} />
+              </div>
+            );
+          })}
+        </div>
 
-    return (
-        <Fragment>
-            <Head>
-                <title>Profile Dashboard</title>
-            </Head>
-
-            <div className={styles.jumbotron}>
-
-                <h1>Dashboard</h1>
-                {redirect && <p className={styles.mint}>Success! Check out your new Alchemon below!</p>}
-
-                <h2>Contract Address</h2>
-                <p>{address}</p>
-
-                <h2 className={styles.nft_heading}>My NFTs</h2>
-                <div className={styles.nft_container}>
-                    {nfts.map(nft => {
-                        return (
-                            <div className={styles.nft} key={nft.tokenId}>
-                                <h3>{nft.rawMetadata.name}</h3>
-                                <img src={nft.media[0].raw} />
-                            </div>
-                        )
-                    })}
-                </div>
-
-                <button onClick={() => router.replace('/')}>
-                    Back to Main Page
-                </button>
-
-            </div>
-        </Fragment>
-    )
+        <button onClick={() => router.replace("/")}>Back to Main Page</button>
+      </div>
+    </Fragment>
+  );
 }

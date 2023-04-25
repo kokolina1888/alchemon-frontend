@@ -23,7 +23,6 @@ import { ethers } from 'ethers';
 const abi = contract.abi;
 
 export default function Home() {
-
   // Standard Next router definition
   const router = useRouter();
 
@@ -43,14 +42,8 @@ export default function Home() {
   const [nfts, setNfts] = useState([]);
 
   // Parent Alchemons
-  const [parent1, setParent1] = useState('none');
-  const [parent2, setParent2] = useState('none');
-
-  // Form error message
-  const [formError, setFormError] = useState(null);
-
-  // Minting state
-  const [isMinting, setIsMinting] = useState(false);
+  const [parent1, setParent1] = useState("none");
+  const [parent2, setParent2] = useState("none");
 
   // Initialize Alchemy SDK
   const settings = {
@@ -62,68 +55,70 @@ export default function Home() {
 
   // Mounting fix to avoid hydration errors
   useEffect(() => {
-    setHasMounted(true)
+    setHasMounted(true);
   }, []);
 
   // Get all Alchemon NFTs owned by the connected wallet
   useEffect(() => {
     const getNfts = async () => {
       const response = await alchemy.nft.getNftsForOwner(address);
-      const nfts = response.ownedNfts.filter(nft => nft.contract.address.toUpperCase() === contractAddress.toUpperCase());
+      const nfts = response.ownedNfts.filter(
+        (nft) =>
+          nft.contract.address.toUpperCase() === contractAddress.toUpperCase()
+      );
       setNfts(nfts);
-    }
+    };
     getNfts();
-  }, [])
+  }, []);
 
-  // Get sample Alchemon NFTs 
+  // Get sample Alchemon NFTs
   useEffect(() => {
     const getSamples = async () => {
       const response = await alchemy.nft.getNftsForContract(contractAddress);
-      const nfts = response.nfts.slice(0, 3);
+      const nfts = response.nfts;
+      // const nfts = response.nfts.slice(0, 3);
       setSamples(nfts);
-    }
+    };
     getSamples();
-  }, [])
+  }, []);
 
   // Get all contracts for owner
   useEffect(() => {
-    const options = { method: 'GET', headers: { accept: 'application/json' } };
+    const options = { method: "GET", headers: { accept: "application/json" } };
 
-    fetch(`https://eth-mainnet.g.alchemy.com/nft/v2/${alchemyApiKey}/getContractsForOwner?owner=${address}`, options)
-      .then(response => response.json())
-      .then(response => setContracts(response.contracts))
-      .catch(err => console.error(err));
-  }, [])
+    fetch(
+      `https://eth-mainnet.g.alchemy.com/nft/v2/${alchemyApiKey}/getContractsForOwner?owner=${address}`,
+      options
+    )
+      .then((response) => response.json())
+      .then((response) => setContracts(response.contracts))
+      .catch((err) => console.error(err));
+  }, []);
 
-  // Do not render until entire UI is mounted  
+  // Do not render until entire UI is mounted
   if (!hasMounted) return null;
 
   // Redirect to Connect page if wallet is not connected
   if (!isConnected) {
-    router.replace('/connect');
+    router.replace("/connect");
   }
 
   // Form handlers
   const parent1Handler = (e) => {
     setParent1(e.target.value);
-  }
+  };
 
   const parent2Handler = (e) => {
     setParent2(e.target.value);
-  }
-
+  };
 
   // Function that allows breeding of NFTs using 2 parent NFTs
   const mintNft = async (e) => {
-
     e.preventDefault();
 
-    setFormError(null);
-
-    // Only allow breeding if the parents are distinct 
-    if (parent1 === 'none' || parent2 === 'none' || parent1 === parent2) {
+    // Only allow breeding if the parents are distinct
+    if (parent1 === "none" || parent2 === "none" || parent1 === parent2) {
       console.log("Incorrect parents");
-      setFormError('Please choose two different valid IDs as parents');
       return;
     }
 
@@ -132,37 +127,33 @@ export default function Home() {
       const { ethereum } = window;
 
       if (ethereum) {
-
-        setIsMinting(true);
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
         const nftContract = new ethers.Contract(contractAddress, abi, signer);
 
         console.log("Initialize payment");
-        let nftTxn = await nftContract.breed(parseInt(parent1), parseInt(parent2));
+        let nftTxn = await nftContract.breed(
+          parseInt(parent1),
+          parseInt(parent2)
+        );
 
         console.log("Mining... please wait");
         await nftTxn.wait();
 
-        console.log(`Mined, see transaction: https://goerli.etherscan.io/tx/${nftTxn.hash}`);
-        router.push({
-          pathname: '/dashboard',
-          query: { event: 'mint' },
-        }, '/dashboard');
-
+        console.log(
+          `Mined, see transaction: https://goerli.etherscan.io/tx/${nftTxn.hash}`
+        );
+        router.replace("/dashboard");
       } else {
         console.log("Ethereum object does not exist");
       }
-
     } catch (err) {
-      setIsMinting(false);
       console.log(err);
     }
-  }
+  };
 
   return (
     <Fragment>
-
       <Head>
         <title>Alchemon</title>
         <meta name="description" content="A simple NFT based game" />
@@ -173,56 +164,71 @@ export default function Home() {
       <main className={styles.main}>
         <h1>Alchemon</h1>
 
-        <button onClick={() => router.push('/dashboard')}>
+        <button onClick={() => router.push("/dashboard")}>
           Profile Dashboard
         </button>
 
         <h2>Breed a New Alchemon</h2>
 
         <form className={styles.breed_form} onSubmit={mintNft}>
-          <select name="parent1" id="parent1" value={parent1} onChange={parent1Handler}>
+          <select
+            name="parent1"
+            id="parent1"
+            value={parent1}
+            onChange={parent1Handler}>
             <option value="none">---</option>
-            {nfts.map(nft => {
-              return <option value={nft.tokenId} key={nft.tokenId}>{nft.title}</option>
+            {nfts.map((nft) => {
+              return (
+                <option value={nft.tokenId} key={nft.tokenId}>
+                  {nft.title}
+                </option>
+              );
             })}
           </select>
-          <select name="parent2" id="parent2" value={parent2} onChange={parent2Handler}>
+          <select
+            name="parent2"
+            id="parent2"
+            value={parent2}
+            onChange={parent2Handler}>
             <option value="none">---</option>
-            {nfts.map(nft => {
-              return <option value={nft.tokenId} key={nft.tokenId}>{nft.title}</option>
+            {nfts.map((nft) => {
+              return (
+                <option value={nft.tokenId} key={nft.tokenId}>
+                  {nft.title}
+                </option>
+              );
             })}
           </select>
-          <button type='submit'>Breed</button>
-          {formError && <p className={styles.form_error}>{formError}</p>}
-          {isMinting && <p className={styles.minting}>Your new Alchemon is minting. Please wait...</p>}
+          <button type="submit">Breed</button>
         </form>
 
         <h2>Sample Alchemon NFTs</h2>
         <div className={styles.sample_nfts}>
-          {samples.map(nft => {
+          {samples.map((nft) => {
             return (
               <div className={styles.nft} key={nft.tokenId}>
                 <h3>{nft.title}</h3>
                 <img src={nft.media[0].raw} />
               </div>
-            )
+            );
           })}
         </div>
 
         <h2>Projects by Alchemon Creators</h2>
         <ul className={styles.contract_container}>
-          {contracts.map(contract => {
+          {contracts.map((contract) => {
             return (
               <li key={contract.address}>
-                <a href={`https://goerli.etherscan.io/address/${contract.address}`} target="_blank">
+                <a
+                  href={`https://goerli.etherscan.io/address/${contract.address}`}
+                  target="_blank">
                   {contract.address}
                 </a>
               </li>
-            )
+            );
           })}
         </ul>
-
       </main>
     </Fragment>
-  )
+  );
 }
